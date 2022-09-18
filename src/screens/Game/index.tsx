@@ -7,7 +7,7 @@ import { Entypo } from '@expo/vector-icons';
 import { GameParams } from '../../@types/navigation';
 
 import { styles } from './styles';
-import { AdCard, AdCardProps, Background, Heading } from '../../components';
+import { AdCard, AdCardProps, Background, Heading, DuoMatch } from '../../components';
 
 import { THEME } from '../../theme';
 import logoImg from '../../assets/logo-nlw-esports.png'
@@ -15,6 +15,8 @@ import logoImg from '../../assets/logo-nlw-esports.png'
 
 export function Game() {
   const [ads, setAds] = useState<AdCardProps[]>([]);
+  const [discordDuoSelected, setDiscordDuoSelected] = useState<string>('');
+
   const navigation = useNavigation();
   const route = useRoute();
   const game = route.params as GameParams;
@@ -23,14 +25,24 @@ export function Game() {
     navigation.goBack();
   }
 
-  async function fetchData(gameId: string) {
-    const response = await fetch(`http://192.168.0.184:3000/games/${gameId}/ads`);
-    const data = await response.json();
+  async function http<T>(url: string): Promise<T> {
+    const response = await fetch(url);
+    return response.json();
+  }
+  
+
+  async function getDiscordUserBy(adId: string) {
+    const data = await http<{ discord: string }>(`http://192.168.0.184:3000/ads/${adId}/discord`);
+    setDiscordDuoSelected(data.discord);
+  }
+
+  async function getAdsBy(gameId: string) {
+    const data = await http<AdCardProps[]>(`http://192.168.0.184:3000/games/${gameId}/ads`);
     setAds(data);
   }
 
   useEffect(() => {
-    fetchData(game.id)
+    getAdsBy(game.id)
   }, []);
 
   return (
@@ -66,7 +78,7 @@ export function Game() {
 
         <FlatList 
           data={ads}
-          renderItem={({ item: ad }) => <AdCard data={ad} onConnect={() => {}} />}
+          renderItem={({ item: ad }) => <AdCard data={ad} onConnect={async () => getDiscordUserBy(ad.id)} />}
           keyExtractor={ad => ad.id}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -77,6 +89,11 @@ export function Game() {
               Não há anúncios publicados ainda.
             </Text>
           )}
+        />
+        <DuoMatch 
+          visible={discordDuoSelected.length > 0}
+          discord={discordDuoSelected}
+          onClose={() => setDiscordDuoSelected('')}
         />
       </SafeAreaView>
     </Background>
